@@ -8,6 +8,19 @@ from .serializers import NodeSerializer, EdgeSerializer
 
 class NodeView(APIView):
 
+    def get(self, request):
+        nodes = Node.objects.all()
+
+        data = []
+
+        for node in nodes:
+            data.append({
+                "id": node.id,
+                "name": node.name
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+
     def post(self, request):
         serializer = NodeSerializer(data=request.data)
 
@@ -27,7 +40,35 @@ class NodeView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    def delete(self, request, node_id):
+        try:
+            node = Node.objects.get(id=node_id)
+        except Node.DoesNotExist:
+            return Response(
+                {"error": "Node not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        node.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class EdgeView(APIView):
+
+    def get(self, request):
+        edges = Edge.objects.all()
+
+        data = []
+
+        for edge in edges:
+            data.append({
+                "id": edge.id,
+                "source": edge.source.name,
+                "destination": edge.destination.name,
+                "latency": edge.latency
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = EdgeSerializer(data=request.data)
@@ -81,6 +122,19 @@ class EdgeView(APIView):
             },
             status=status.HTTP_201_CREATED
         )
+
+    def delete(self, request, edge_id):
+        try:
+            edge = Edge.objects.get(id=edge_id)
+        except Edge.DoesNotExist:
+            return Response(
+                {"error": "Edge not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        edge.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ShortestPathView(APIView):
 
