@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import Node, Edge
+from .models import Node, Edge, RouteHistory
 from .serializers import NodeSerializer, EdgeSerializer
 
 
@@ -163,6 +163,13 @@ class ShortestPathView(APIView):
 
         path.reverse()
 
+        RouteHistory.objects.create(
+            source=source.name,
+            destination=destination.name,
+            total_latency=distances[destination.name],
+            path=path
+        )
+
         return Response(
             {
                 "total_latency": distances[destination.name],
@@ -170,3 +177,43 @@ class ShortestPathView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+class RouteHistoryView(APIView):
+
+    def get(self, request):
+        history = RouteHistory.objects.all().order_by("-created_at")
+
+        source = request.query_params.get("source")
+        destination = request.query_params.get("destination")
+        limit = request.query_params.get("limit")
+        date_from = request.query_params.get("date_from")
+        date_to = request.query_params.get("date_to")
+
+        if source:
+            history = history.filter(source=source)
+
+        if destination:
+            history = history.filter(destination=destination)
+
+        if date_from:
+            history = history.filter(created_at__gte=date_from)
+
+        if date_to:
+            history = history.filter(created_at__lte=date_to)
+
+        if limit:
+            history = history[:int(limit)]
+
+        data = []
+
+        for route in history:
+            data.append({
+                "id": route.id,
+                "source": route.source,
+                "destination": route.destination,
+                "total_latency": route.total_latency,
+                "path": route.path,
+                "created_at": route.created_at
+            })
+
+        return Response(data, status=status.HTTP_200_OK)

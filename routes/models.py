@@ -23,3 +23,13 @@ class Edge(models.Model):
 
     def __str__(self):
         return f"{self.source} -> {self.destination}"
+
+class RouteHistory(models.Model):
+    source = models.CharField(max_length=100)
+    destination = models.CharField(max_length=100)
+    total_latency = models.FloatField()
+    path = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.source} -> {self.destination}"
