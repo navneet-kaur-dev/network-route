@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import Node
-from .serializers import NodeSerializer
+from .models import Node, Edge
+from .serializers import NodeSerializer, EdgeSerializer
 
 
 class NodeView(APIView):
@@ -80,4 +80,93 @@ class EdgeView(APIView):
                 "latency": edge.latency
             },
             status=status.HTTP_201_CREATED
+        )
+
+class ShortestPathView(APIView):
+
+    def post(self, request):
+        source_name = request.data.get("source")
+        destination_name = request.data.get("destination")
+
+        if not source_name or not destination_name:
+            return Response(
+                {"error": "Source and destination are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            source = Node.objects.get(name=source_name)
+            destination = Node.objects.get(name=destination_name)
+        except Node.DoesNotExist:
+            return Response(
+                {"error": "Source or destination node not found"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        edges = Edge.objects.all()
+
+        graph = {}
+
+        for node in Node.objects.all():
+            graph[node.name] = []
+
+        for edge in edges:
+            graph[edge.source.name].append(
+                (edge.destination.name, edge.latency)
+            )
+
+        distances = {}
+
+        for node in graph:
+            distances[node] = float("inf")
+
+        distances[source.name] = 0
+
+        previous = {}
+        unvisited = set(graph.keys())
+
+        while unvisited:
+            current = min(
+                unvisited,
+                key=lambda node: distances[node]
+            )
+
+            if distances[current] == float("inf"):
+                break
+
+            unvisited.remove(current)
+
+            if current == destination.name:
+                break
+
+            for neighbor, latency in graph[current]:
+                new_distance = distances[current] + latency
+
+                if new_distance < distances[neighbor]:
+                    distances[neighbor] = new_distance
+                    previous[neighbor] = current
+
+        if distances[destination.name] == float("inf"):
+            return Response(
+                {
+                    "error": f"No path exists between {source.name} and {destination.name}"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        path = []
+        current = destination.name
+
+        while current:
+            path.append(current)
+            current = previous.get(current)
+
+        path.reverse()
+
+        return Response(
+            {
+                "total_latency": distances[destination.name],
+                "path": path
+            },
+            status=status.HTTP_200_OK
         )
