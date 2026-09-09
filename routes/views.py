@@ -26,6 +26,7 @@ class NodeView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+        
 class EdgeView(APIView):
 
     def post(self, request):
